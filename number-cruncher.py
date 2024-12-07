@@ -21,8 +21,8 @@ def list_files_recursively(directory):
     for root, _, files in os.walk(directory):
         for file in files:
             file_path = os.path.join(root, file)
-            file_list.append(file_path)
-    return file_list
+            file_list.append(file_path.replace('\\','/'))
+    return(file_list)
 
 all_stuff = {}
 target_files=list_files_recursively('data')
@@ -30,3 +30,4 @@ for target in target_files:
     if 'outfits' in target or 'ships' in target:
         all_stuff[target] = test.tokenize_file(target)
 
+pprint(all_stuff['data/wanderer/wanderer outfits.txt'])
