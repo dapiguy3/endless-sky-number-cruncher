@@ -1,4 +1,19 @@
-from pprint import pprint
+
+#selection is the list or iterable structure you are indexing
+#mindex is the start of the prediction selection(index num)
+#maxdex is the end(index num)
+#token is what confirms its part of the subdivision(also will be removed)
+#returns list, intended for adding to a dictionary
+#e.g. skybeam['licenses']=subdivide_prediction(container, i, i+5, '\t')
+def subdivide_prediction(selection: list, mindex: int, maxdex: int, token: str):
+    output_list = [] #its what it sounds like
+    for i in range(int(mindex), int(maxdex)): #index through the range
+        if token in selection[i]: #check for token
+            output_list.append(selection[i].replace(token,'')) #add to list
+        else:
+            break #once done, break the loop. saves flops and avoids fucky data
+    return(output_list) #return it!
+
 
 def tokenize_file(filepath):
     # first, we have to prep the file data and strip a bit of whitespace
@@ -13,7 +28,7 @@ def tokenize_file(filepath):
             removal_buffer.append(line_data.replace('\n','')) #add lines to buffer
             line_data=f.readline()#move to next iteration
 
-    while True: #idgaf, stop complaining
+    while True: #idgaf, stop complaining, its cleanup
         if len(removal_buffer) > 0: #make sure the buffer has something in it
             if removal_buffer[0]!='': #make sure the string isnt empty
                 if removal_buffer[0][0]!='#': #make sure it isnt a comment
@@ -29,7 +44,7 @@ def tokenize_file(filepath):
     #i actually dont know how this data is parsed by the game 
     outfit_key_buffer = [] #the indexes for the outfit names will be here
     for i in range(0,len(container)):
-        if container[i][:6]=='outfit': #this is our big alert flag.
+        if container[i][:6]=='outfit' and container[i][:7]!='outfits': #this is our big alert flag.
             outfit_key_buffer.append(i)#log the index into key buffer
 
     outfits={}#this is one of our big bad evil variables.
@@ -46,6 +61,7 @@ def tokenize_file(filepath):
             outfits[current_key] = container[idx+1:outfit_key_buffer[i+1]]
 
     #we have our keys set correctly, but our values are all fucked up
+    #currently, the values are a list of strings. the strings need to be split.
     #lets fix this
     for key in outfits.keys(): #iterate through outfits by key
         temp_container=outfits[key] #split the value into a list
@@ -59,11 +75,20 @@ def tokenize_file(filepath):
                 'thumbnail',
                 'category'
             ]
+            #licenses are double indented for some reason so i need a way to handle it.
             for item in exceptions_list:#iterate through exceptions list by item
                 if item in idx: #check if item is in the indexed line
                     output_dict[item] = ' '.join(idx.split()[1:]) #if so, handle it
                     break
-            
+                elif 'licenses' in item: #handle licenses with that new function
+                    output_dict['licenses']=subdivide_prediction(temp_container,i,i+5,'\t')
+                    #whoah, lines are getting long. oh well, not my problem
+                elif 'weapon' in item: #handle gun information
+                    output_dict['weapon '+str(key)] = subdivide_prediction(temp_container,i,i+10,'\t')
+                elif item[0] == '\t': #ignore lines that start with a tab.
+                    pass              #they *SHOULD* be caught by the predictor
+
+                
                 else: #notice how the string formatting is almost opposite to above
                     key_output = ' '.join(idx.split()[:-1]).replace('\"', '')#pretty up the key
                     if len(idx.split()) > 1:
@@ -79,7 +104,7 @@ def tokenize_file(filepath):
             try: outfits[item][attr] = float(outfits[item][attr]) #attempt to convert the value to a float
             except ValueError: pass #if not, just move on
 
-    print('file', filepath, "was loaded successfully")
+    return(outfits)
 
 #TODO: add exception handling since we are opening a metric fuckload of data here so there will probably
 #be problems!
